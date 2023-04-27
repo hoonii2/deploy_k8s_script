@@ -1,0 +1,65 @@
+server:
+  port: 80
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://admin:admin@127.0.0.1:8761/eureka
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: product
+          uri: lb://PRODUCT
+          predicates:
+            - Path=/product/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: PRODUCT
+                fallbackuri: forward:/productFallBack
+        - id: reservation
+          uri: lb://RESERVATION
+          predicates:
+            - Path=/reservation/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: RESERVATION
+                fallbackuri: forward:/reservationFallBack
+
+resilience4j:
+  circuit breaker:
+    configs:
+      default:
+        register-health-indicator: true # actuator ? ?? circuitbreaker ?? ??? ?? ??
+        minimum-number-of-calls: 5 # Circuit Braker ? ?? ?? ?? ? ?? ?? ?
+        failure-rate-threshold: 50 # ?? ??? 50% ?? ?? ?? ? ?? ??
+        wait-duration-in-open-state: 10s # ?? open ? half-open ?? ? ???? ??
+
+    instances:
+      PRODUCT:
+        base-config: default
+      RESERVATION:
+        base-config: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    shutdown:
+      enabled: true
+    health:
+      show-details: always # actuator?? ???? ???? ???? ?? ??
+  health:
+    circuit-breakers:
+      enabled: true # actuator? ?? circuitbraker ??? ???? ?? ??
